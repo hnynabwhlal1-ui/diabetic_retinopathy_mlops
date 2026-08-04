@@ -1,11 +1,14 @@
 import numpy as np
-import tensorflow as tf
 from src.config import MODEL_PATH, CLASS_NAMES
 from src.utils import preprocess_image
 from src.grad_cam import make_gradcam_heatmap, overlay_heatmap
 
-# Load model
+import os
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
+import tensorflow as tf
+
+# Load model using legacy tf-keras compatibility
 model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 
 def run_prediction_pipeline(image_file):
