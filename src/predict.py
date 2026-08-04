@@ -1,27 +1,12 @@
-import os
-os.environ["TF_USE_LEGACY_KERAS"] = "1"
-
 import numpy as np
-import tf_keras as keras
 import tensorflow as tf
 
 from src.config import MODEL_PATH, CLASS_NAMES
 from src.utils import preprocess_image
 from src.grad_cam import make_gradcam_heatmap, overlay_heatmap
 
-# Load model safely with custom_objects dict covering EfficientNet layers
-def load_my_model(path):
-    try:
-        return keras.models.load_model(path, compile=False)
-    except Exception:
-        # Pass tf.keras layers & applications into custom_objects
-        custom_objects = {
-            'Functional': tf.keras.Model,
-            'EfficientNetB0': tf.keras.applications.EfficientNetB0
-        }
-        return tf.keras.models.load_model(path, compile=False, custom_objects=custom_objects)
-
-model = load_my_model(MODEL_PATH)
+# Load model directly with TensorFlow 2.15 compatibility
+model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 
 def run_prediction_pipeline(image_file):
     # Step 1: Preprocess Image
