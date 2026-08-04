@@ -1,11 +1,12 @@
 import numpy as np
-import keras
+import tensorflow as tf
 from src.config import MODEL_PATH, CLASS_NAMES
 from src.utils import preprocess_image
 from src.grad_cam import make_gradcam_heatmap, overlay_heatmap
 
 # Load model
-model = keras.models.load_model(MODEL_PATH, compile=False, safe_mode=False)
+
+model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 
 def run_prediction_pipeline(image_file):
     # Step 1: Preprocess Image
