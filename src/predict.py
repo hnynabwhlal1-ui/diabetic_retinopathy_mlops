@@ -1,24 +1,27 @@
 import os
-# يجب إعداد المتغيرة في أول سطر قبل استيراد أي مكتبة أخرى متعلقة بـ TensorFlow
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 import numpy as np
 import tf_keras as keras
-from tensorflow.keras.applications import EfficientNetB0
+import tensorflow as tf
 
 from src.config import MODEL_PATH, CLASS_NAMES
 from src.utils import preprocess_image
 from src.grad_cam import make_gradcam_heatmap, overlay_heatmap
 
-# Load model using tf_keras directly to bypass Keras 3 deserialization errors
-try:
-    model = keras.models.load_model(MODEL_PATH, compile=False)
-except Exception:
-    model = keras.models.load_model(
-        MODEL_PATH, 
-        compile=False, 
-        custom_objects={'EfficientNetB0': EfficientNetB0}
-    )
+# Load model safely with custom_objects dict covering EfficientNet layers
+def load_my_model(path):
+    try:
+        return keras.models.load_model(path, compile=False)
+    except Exception:
+        # Pass tf.keras layers & applications into custom_objects
+        custom_objects = {
+            'Functional': tf.keras.Model,
+            'EfficientNetB0': tf.keras.applications.EfficientNetB0
+        }
+        return tf.keras.models.load_model(path, compile=False, custom_objects=custom_objects)
+
+model = load_my_model(MODEL_PATH)
 
 def run_prediction_pipeline(image_file):
     # Step 1: Preprocess Image
@@ -31,8 +34,7 @@ def run_prediction_pipeline(image_file):
     # Debug print
     print(f"\n--- Raw Sigmoid Value: {raw_val:.4f} ---")
 
-    # Correct Mapping Logic:
-    # CLASS_NAMES = ['DR', 'No_DR'] -> Index 0 = DR, Index 1 = No_DR
+    # Correct Mapping Logic
     if raw_val < 0.5:
         predicted_class_idx = 0  # DR
         confidence = 1.0 - raw_val
@@ -53,4 +55,3 @@ def run_prediction_pipeline(image_file):
         "original_image": original_img,
         "gradcam_image": gradcam_result
     }
-
