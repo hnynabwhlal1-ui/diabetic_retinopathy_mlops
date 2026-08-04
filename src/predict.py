@@ -5,7 +5,7 @@ from src.utils import preprocess_image
 from src.grad_cam import make_gradcam_heatmap, overlay_heatmap
 
 # Load model
-model = keras.models.load_model(MODEL_PATH)
+model = keras.models.load_model(MODEL_PATH, compile=False, safe_mode=False)
 
 def run_prediction_pipeline(image_file):
     # Step 1: Preprocess Image
