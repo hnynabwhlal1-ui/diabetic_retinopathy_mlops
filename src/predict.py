@@ -7,10 +7,19 @@ import os
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 import tensorflow as tf
+from tensorflow.keras.applications import EfficientNetB0
 
-# Load model using legacy tf-keras compatibility
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+# Pass custom objects or load model without strict compilation
+try:
+    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+except Exception:
+    model = tf.keras.models.load_model(
+        MODEL_PATH, 
+        compile=False, 
+        custom_objects={'EfficientNetB0': EfficientNetB0}
+    )
 
+    
 def run_prediction_pipeline(image_file):
     # Step 1: Preprocess Image
     original_img, img_array, input_tensor = preprocess_image(image_file)
