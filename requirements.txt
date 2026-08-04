@@ -6,5 +6,6 @@ pillow
 scikit-learn
 matplotlib
 seaborn
-mlflow
+opencv-python-headless
 pytest
+
