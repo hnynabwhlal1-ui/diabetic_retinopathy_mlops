@@ -2,14 +2,18 @@ import os
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 import numpy as np
+import tensorflow as tf
 import tf_keras as keras
 
 from src.config import MODEL_PATH, CLASS_NAMES
 from src.utils import preprocess_image
 from src.grad_cam import make_gradcam_heatmap, overlay_heatmap
 
-# Load model using tf_keras
-model = keras.models.load_model(MODEL_PATH, compile=False)
+# تحميل النموذج مع إغلاق الفحص الصارم للطبقات
+try:
+    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+except Exception:
+    model = keras.models.load_model(MODEL_PATH, compile=False, safe_mode=False)
 
 def run_prediction_pipeline(image_file):
     original_img, img_array, input_tensor = preprocess_image(image_file)
