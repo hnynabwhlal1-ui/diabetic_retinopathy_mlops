@@ -1,11 +1,10 @@
 streamlit
-tensorflow==2.15.0
-tf-keras==2.15.0
-numpy
-pandas
+tensorflow
+tf-keras
+numpy<2.0.0
+opencv-python-headless
 pillow
 scikit-learn
 matplotlib
 seaborn
-opencv-python-headless
 pytest
