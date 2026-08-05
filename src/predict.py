@@ -7,21 +7,28 @@ from src.utils import preprocess_image
 from src.grad_cam import make_gradcam_heatmap, overlay_heatmap
 
 def load_robust_model(model_path):
+    # 1. المحاولة الأولى: تحميل النموذج كاملاً بالطريقة المباشرة
     try:
-        # المحاولة الأولى: التحميل المباشر
         return tf.keras.models.load_model(model_path, compile=False)
     except Exception:
-        # إذا فشل التفريغ البنائي، نبني المعمارية ونحمل الأوزان فقط
-        base_model = tf.keras.applications.EfficientNetB0(
-            include_top=False, weights=None, input_shape=(224, 224, 3)
-        )
-        x = tf.keras.layers.GlobalAveragePooling2D()(base_model.output)
-        outputs = tf.keras.layers.Dense(1, activation='sigmoid')(x)
-        built_model = tf.keras.Model(inputs=base_model.input, outputs=outputs)
-        
-        # تحميل الأوزان فقط وتجاهل هيكل الطبقات المعطوب
+        pass
+
+    # 2. المحاولة الثانية: بناء المعمارية وتحميل الأوزان مع التغاضي عن أسماء الطبقات غير المتطابقة
+    base_model = tf.keras.applications.EfficientNetB0(
+        include_top=False, weights=None, input_shape=(224, 224, 3)
+    )
+    x = tf.keras.layers.GlobalAveragePooling2D()(base_model.output)
+    outputs = tf.keras.layers.Dense(1, activation='sigmoid')(x)
+    built_model = tf.keras.Model(inputs=base_model.input, outputs=outputs)
+    
+    try:
+        # تحميل الأوزان بالاعتماد على أسماء الطبقات وتجاوز الطبقات المختلفة
+        built_model.load_weights(model_path, by_name=True, skip_mismatch=True)
+    except Exception:
+        # في حال كان الملف يحتوي على الأوزان فقط بدون هيكل
         built_model.load_weights(model_path)
-        return built_model
+        
+    return built_model
 
 model = load_robust_model(MODEL_PATH)
 
