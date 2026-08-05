@@ -9,11 +9,19 @@ from src.config import MODEL_PATH, CLASS_NAMES
 from src.utils import preprocess_image
 from src.grad_cam import make_gradcam_heatmap, overlay_heatmap
 
-# تحميل النموذج مع إغلاق الفحص الصارم للطبقات
+# إعداد قاموس الشؤون المخصصة لتحديد الفئات التي تفشل Keras في التعرف عليها
+custom_objects = {
+    'Functional': tf.keras.Model,
+    'Model': tf.keras.Model,
+    'Sequential': tf.keras.Sequential,
+}
+
+# تحميل النموذج بأمان
 try:
-    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+    model = tf.keras.models.load_model(MODEL_PATH, compile=False, custom_objects=custom_objects)
 except Exception:
-    model = keras.models.load_model(MODEL_PATH, compile=False, safe_mode=False)
+    model = keras.models.load_model(MODEL_PATH, compile=False, custom_objects=custom_objects)
+
 
 def run_prediction_pipeline(image_file):
     original_img, img_array, input_tensor = preprocess_image(image_file)
