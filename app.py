@@ -4,14 +4,20 @@ import numpy as np
 from src.predict import run_prediction_pipeline
 from src.config import CLASS_NAMES
 
-# 1. Page Configuration
+# ==========================================
+# 1. Page Configuration & Setup
+# ==========================================
+# Configures the browser tab title, icon, and wide layout mode for dual-column view.
 st.set_page_config(
     page_title="Diabetic Retinopathy Diagnostic System",
     page_icon="👁️",
     layout="wide"
 )
 
-# --- CUSTOM CSS FOR BEAUTIFUL DARK MEDICAL THEME ---
+# ==========================================
+# 2. Custom CSS Styling (Dark Theme)
+# ==========================================
+# Applies custom CSS to construct a modern, dark-themed medical diagnostic UI.
 def apply_custom_theme():
     st.markdown(
         """
@@ -38,9 +44,10 @@ def apply_custom_theme():
     )
 
 apply_custom_theme()
-# --------------------------------------------------
 
-# 2. Header and Title
+# ==========================================
+# 3. Header and Title Section
+# ==========================================
 st.title("👁️ Diabetic Retinopathy Detection & Explainable AI (Grad-CAM)")
 st.markdown("""
 This application uses a Deep Learning model (**EfficientNetB0**) combined with **Grad-CAM**
@@ -49,50 +56,58 @@ to classify retinal images and highlight the specific areas that influenced the 
 
 st.divider()
 
-# 3. File Uploader Component
-uploaded_file = st.sidebar.file_uploader(
-    "Upload a Retinal Fundus Image",
-    type=["jpg", "jpeg", "png"]
+# ==========================================
+# 4. Multi-File Uploader Component
+# ==========================================
+# Set accept_multiple_files=True to allow selecting and uploading up to 8+ images at once.
+uploaded_files = st.sidebar.file_uploader(
+    "Upload Retinal Fundus Images (Select Multiple)",
+    type=["jpg", "jpeg", "png"],
+    accept_multiple_files=True
 )
 
-if uploaded_file is not None:
-    # Create two columns to display original image and Grad-CAM explanation side-by-side
-    col1, col2 = st.columns(2)
+# ==========================================
+# 5. Iterative Batch Processing Pipeline
+# ==========================================
+# If files are uploaded, loop through each image individually and display predictions.
+if uploaded_files:
+    st.sidebar.success(f"📂 Total Images Loaded: **{len(uploaded_files)}**")
+    
+    for idx, uploaded_file in enumerate(uploaded_files, start=1):
+        st.markdown(f"### 🖼️ Sample {idx}: `{uploaded_file.name}`")
+        
+        # Create two columns to display original image and Grad-CAM explanation side-by-side
+        col1, col2 = st.columns(2)
 
-    with col1:
-        st.subheader("📷 Original Retinal Image")
-        st.image(uploaded_file, use_container_width=True)
+        with col1:
+            st.subheader("📷 Original Retinal Image")
+            st.image(uploaded_file, use_container_width=True)
 
-    # IMPORTANT: reset the stream position before reading the file again,
-    # since st.image() above already consumed it.
-    uploaded_file.seek(0)
+        # Reset the byte stream pointer before passing the file object to the inference function
+        uploaded_file.seek(0)
 
-    with st.spinner("Analyzing image and generating Grad-CAM explanation..."):
-        results = run_prediction_pipeline(uploaded_file)
+        with st.spinner(f"Analyzing Image {idx}/{len(uploaded_files)} and generating Grad-CAM..."):
+            results = run_prediction_pipeline(uploaded_file)
 
-    # Stop here and show a clear error if the pipeline failed,
-    # instead of crashing on a missing key.
-    if "error" in results:
-        st.error(f"❌ {results['error']}")
-        st.stop()
+        # Graceful error handling for missing keys or pipeline failure
+        if "error" in results:
+            st.error(f"❌ Error in {uploaded_file.name}: {results['error']}")
+            st.divider()
+            continue
 
-    with col2:
-        st.subheader("🔥 Grad-CAM Heatmap Explanation")
-        st.image(results["gradcam_image"], use_container_width=True)
+        with col2:
+            st.subheader("🔥 Grad-CAM Heatmap Explanation")
+            st.image(results["gradcam_image"], use_container_width=True)
 
-    st.divider()
+        # Display Diagnostic Results & Confidence Score
+        label = results["label"]
+        confidence = results["confidence"] * 100
 
-    # 4. Display Diagnostic Results
-    st.subheader("📊 Diagnostic Summary")
+        if label == "DR":
+            st.error(f"**Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
+            st.warning("⚠️ High Risk: Signs of Diabetic Retinopathy detected in the heatmap region.")
+        else:
+            st.success(f"**Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
+            st.info("✅ Low Risk: No signs of Diabetic Retinopathy detected.")
 
-    label = results["label"]
-    confidence = results["confidence"] * 100
-
-    # Compare by label name (not by index) so this stays correct
-    # even if CLASS_NAMES order in config.py ever changes.
-    if label == "DR":
-        st.error(f"**Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
-        st.warning("⚠️ High Risk: Signs of Diabetic Retinopathy detected in the heatmap region.")
-    else:
-        st.success(f"**Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
-        st.info("✅ Low Risk: No signs of Diabetic Retinopathy detected.")
+        st.divider()
