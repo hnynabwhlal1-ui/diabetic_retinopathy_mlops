@@ -1,36 +1,76 @@
+import io
+import base64
+import requests
 import streamlit as st
 from PIL import Image
-import numpy as np
-from src.predict import run_prediction_pipeline
-from src.config import CLASS_NAMES
 
+# ==========================================
 # 1. Page Configuration
+# ==========================================
 st.set_page_config(
-    page_title="Diabetic Retinopathy Diagnostic System",
+    page_title="AI Retinal Diagnostic Engine",
     page_icon="👁️",
     layout="wide"
 )
 
-# --- CUSTOM CSS FOR BEAUTIFUL DARK MEDICAL THEME ---
+FASTAPI_URL = "http://api:8000/predict"
+
+# ==========================================
+# 2. Advanced CSS Theme + Animated Laser Scanner
+# ==========================================
 def apply_custom_theme():
     st.markdown(
         """
         <style>
-        /* Modern Dark Gradient Background */
         .stApp {
-            background: linear-gradient(135deg, #0d131a 0%, #17212b 50%, #1e2d3d 100%);
-            color: #e2e8f0;
+            background: linear-gradient(135deg, #0b1329 0%, #101d36 100%);
+            color: #f1f5f9;
         }
-
-        /* Sidebar Styling */
         [data-testid="stSidebar"] {
-            background-color: #111822;
+            background-color: #080e1e;
             border-right: 1px solid #1e293b;
         }
-
-        /* Card-like borders for images and results */
-        div[data-testid="stBlock"] {
-            border-radius: 10px;
+        .hero-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            backdrop-filter: blur(4px);
+            margin-bottom: 20px;
+        }
+        .info-box {
+            background: rgba(14, 165, 233, 0.08);
+            border-left: 4px solid #38bdf8;
+            padding: 12px 18px;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            margin-bottom: 25px;
+        }
+        .scan-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            overflow: hidden;
+            border-radius: 12px;
+            border: 1px solid #38bdf8;
+        }
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #00f2fe, #4facfe, transparent);
+            box-shadow: 0 0 15px #00f2fe, 0 0 25px #00f2fe;
+            animation: scanAnimation 2.5s infinite ease-in-out;
+            z-index: 10;
+        }
+        @keyframes scanAnimation {
+            0% { top: 0%; }
+            50% { top: 95%; }
+            100% { top: 0%; }
         }
         </style>
         """,
@@ -38,61 +78,119 @@ def apply_custom_theme():
     )
 
 apply_custom_theme()
-# --------------------------------------------------
 
-# 2. Header and Title
-st.title("👁️ Diabetic Retinopathy Detection & Explainable AI (Grad-CAM)")
-st.markdown("""
-This application uses a Deep Learning model (**EfficientNetB0**) combined with **Grad-CAM**
-to classify retinal images and highlight the specific areas that influenced the decision.
-""")
+# ==========================================
+# 3. Hero Header & Clinical Guidance Note
+# ==========================================
+st.markdown(
+    """
+    <div class="hero-card">
+        <h1 style='color: #38bdf8; margin: 0; font-size: 2.2rem; font-weight: 700;'>
+            👁️ AI Retinal Screening & Diagnostic Engine
+        </h1>
+        <p style='color: #94a3b8; font-size: 1.05rem; margin-top: 8px;'>
+            Powered by <b>FastAPI Backend Microservices</b> and <b>Explainable AI (Grad-CAM)</b>.
+            Designed for real-time clinical decision support in Diabetic Retinopathy detection.
+        </p>
+        <div class="info-box" style="margin-top: 15px; margin-bottom: 0;">
+            💡 <b>Clinical Guidance for Model Selection:</b><br>
+            • <b>EfficientNetB1 (Standard RGB):</b> Optimal for high-quality retinal scans taken under standardized studio lighting.<br>
+            • <b>EfficientNetB1 (Ben Graham):</b> Recommended for scans with varying contrast, non-uniform illumination, or noise artifacts, as it enhances lesion boundaries and neutralizes lighting variations.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 st.divider()
 
-# 3. File Uploader Component
-uploaded_file = st.sidebar.file_uploader(
-    "Upload a Retinal Fundus Image",
-    type=["jpg", "jpeg", "png"]
+# ==========================================
+# 4. Sidebar Controls & Model Selection
+# ==========================================
+st.sidebar.title("🎛️ Control Panel")
+
+model_choice = st.sidebar.selectbox(
+    "Select Model Architecture",
+    options=["b1_rgb", "b1_bengraham"],
+    format_func=lambda x: "EfficientNetB1 (Standard RGB)" if x == "b1_rgb" else "EfficientNetB1 (Ben Graham)"
 )
 
-if uploaded_file is not None:
-    # Create two columns to display original image and Grad-CAM explanation side-by-side
-    col1, col2 = st.columns(2)
+uploaded_files = st.sidebar.file_uploader(
+    "Upload Retinal Fundus Images",
+    type=["jpg", "jpeg", "png"],
+    accept_multiple_files=True
+)
 
-    with col1:
-        st.subheader("📷 Original Retinal Image")
-        st.image(uploaded_file, use_container_width=True)
+st.sidebar.markdown("---")
+st.sidebar.success("🟢 FastAPI Microservice Ready")
 
-    # IMPORTANT: reset the stream position before reading the file again,
-    # since st.image() above already consumed it.
-    uploaded_file.seek(0)
+# ==========================================
+# 5. Diagnostic Pipeline Execution
+# ==========================================
+if uploaded_files:
+    st.sidebar.info(f"📂 Total Scans: **{len(uploaded_files)}**")
 
-    with st.spinner("Analyzing image and generating Grad-CAM explanation..."):
-        results = run_prediction_pipeline(uploaded_file)
+    for idx, uploaded_file in enumerate(uploaded_files, start=1):
+        st.markdown(f"### 🖼️ Sample {idx}: `{uploaded_file.name}`")
 
-    # Stop here and show a clear error if the pipeline failed,
-    # instead of crashing on a missing key.
-    if "error" in results:
-        st.error(f"❌ {results['error']}")
-        st.stop()
+        col1, col2 = st.columns(2)
 
-    with col2:
-        st.subheader("🔥 Grad-CAM Heatmap Explanation")
-        st.image(results["gradcam_image"], use_container_width=True)
+        with col1:
+            st.subheader("📷 Original Scan (Live Laser Radar)")
+            st.markdown(
+                """
+                <div class="scan-container">
+                    <div class="scan-line"></div>
+                """,
+                unsafe_allow_html=True
+            )
+            st.image(uploaded_file, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-    st.divider()
+        uploaded_file.seek(0)
 
-    # 4. Display Diagnostic Results
-    st.subheader("📊 Diagnostic Summary")
+        with st.spinner(f"Communicating with FastAPI Engine [{model_choice}]..."):
+            try:
+                files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
+                params = {"model_key": model_choice}
 
-    label = results["label"]
-    confidence = results["confidence"] * 100
+                # إرسال الصورة + الخيار المحدد إلى FastAPI
+                response = requests.post(FASTAPI_URL, files=files, params=params)
 
-    # Compare by label name (not by index) so this stays correct
-    # even if CLASS_NAMES order in config.py ever changes.
-    if label == "DR":
-        st.error(f"**Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
-        st.warning("⚠️ High Risk: Signs of Diabetic Retinopathy detected in the heatmap region.")
-    else:
-        st.success(f"**Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
-        st.info("✅ Low Risk: No signs of Diabetic Retinopathy detected.")
+                if response.status_code == 200:
+                    data = response.json()
+
+                    label = data.get("prediction")
+                    confidence = float(data.get("confidence", 0))
+                    gradcam_b64 = data.get("gradcam_base64")
+
+                    with col2:
+                        st.subheader("🔥 Grad-CAM Heatmap Explanation")
+                        if gradcam_b64:
+                            img_bytes = base64.b64decode(gradcam_b64)
+                            gradcam_img = Image.open(io.BytesIO(img_bytes))
+                            st.image(gradcam_img, use_container_width=True)
+                        else:
+                            st.warning("No Grad-CAM heatmap generated.")
+
+                    # Clinical Results Display
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if label == "DR":
+                        st.error(f"🚨 **Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
+                        st.warning("⚠️ **High Risk:** Signs of Diabetic Retinopathy detected in the heatmap region.")
+                    else:
+                        st.success(f"✅ **Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
+                        st.info("ℹ️ **Low Risk:** No signs of Diabetic Retinopathy detected.")
+
+                else:
+                    st.error(f"❌ Server Error ({response.status_code}): {response.text}")
+
+            except Exception as e:
+                st.error("❌ Connection Error: FastAPI server is offline. Please start main.py first.")
+
+        st.divider()
+else:
+    st.info("👈 Please upload retinal fundus images from the sidebar to initialize automated diagnosis.")
+
+
+    

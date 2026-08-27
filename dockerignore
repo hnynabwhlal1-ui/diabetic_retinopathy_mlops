@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.gitignore
+.env
+.venv/
+env/
+venv/
+.pytest_cache/
+.vscode/
+
+# MLflow & Local DB
+mlruns/
+mlartifacts/
+*.db
+
+# Docker logs
+*.log
