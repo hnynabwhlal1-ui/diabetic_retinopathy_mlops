@@ -4,6 +4,13 @@ import requests
 import streamlit as st
 from PIL import Image
 
+# استدعاء المحرك الداخلي للتوقع المباشر كخيار بديل تلقائي للسحابة
+try:
+    from src.predict import predict_and_explain
+    HAS_LOCAL_PREDICT = True
+except ImportError:
+    HAS_LOCAL_PREDICT = False
+
 # ==========================================
 # 1. Page Configuration
 # ==========================================
@@ -122,7 +129,7 @@ uploaded_files = st.sidebar.file_uploader(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.success("🟢 FastAPI Microservice Ready")
+st.sidebar.success("🟢 AI Inference Engine Ready")
 
 # ==========================================
 # 5. Diagnostic Pipeline Execution
@@ -149,48 +156,58 @@ if uploaded_files:
 
         uploaded_file.seek(0)
 
-        with st.spinner(f"Communicating with FastAPI Engine [{model_choice}]..."):
+        with st.spinner(f"Analyzing Retinal Scan [{model_choice}]..."):
+            data_processed = False
+            label, confidence, gradcam_img = None, 0.0, None
+
+            # 1. المحاولة الأولى: الاتصال بسيرفر FastAPI (إن كان يعمل)
             try:
                 files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
                 params = {"model_key": model_choice}
-
-                # إرسال الصورة + الخيار المحدد إلى FastAPI
-                response = requests.post(FASTAPI_URL, files=files, params=params)
+                response = requests.post(FASTAPI_URL, files=files, params=params, timeout=3)
 
                 if response.status_code == 200:
                     data = response.json()
-
                     label = data.get("prediction")
                     confidence = float(data.get("confidence", 0))
                     gradcam_b64 = data.get("gradcam_base64")
+                    if gradcam_b64:
+                        img_bytes = base64.b64decode(gradcam_b64)
+                        gradcam_img = Image.open(io.BytesIO(img_bytes))
+                    data_processed = True
+            except Exception:
+                data_processed = False
 
-                    with col2:
-                        st.subheader("🔥 Grad-CAM Heatmap Explanation")
-                        if gradcam_b64:
-                            img_bytes = base64.b64decode(gradcam_b64)
-                            gradcam_img = Image.open(io.BytesIO(img_bytes))
-                            st.image(gradcam_img, use_container_width=True)
-                        else:
-                            st.warning("No Grad-CAM heatmap generated.")
+            # 2. المحاولة الثانية: التشغيل المباشر من predict.py عند الاستضافة السحابية
+            if not data_processed and HAS_LOCAL_PREDICT:
+                try:
+                    uploaded_file.seek(0)
+                    input_img = Image.open(uploaded_file).convert("RGB")
+                    pred_res, heatmap_res = predict_and_explain(input_img, model_key=model_choice)
+                    label = pred_res.get("prediction")
+                    confidence = float(pred_res.get("confidence", 0))
+                    gradcam_img = heatmap_res
+                    data_processed = True
+                except Exception as ex:
+                    st.error(f"❌ Diagnostic Execution Error: {ex}")
 
-                    # Clinical Results Display
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    if label == "DR":
-                        st.error(f"🚨 **Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
-                        st.warning("⚠️ **High Risk:** Signs of Diabetic Retinopathy detected in the heatmap region.")
+            # 3. عرض النتائج والـ Heatmap
+            if data_processed:
+                with col2:
+                    st.subheader("🔥 Grad-CAM Heatmap Explanation")
+                    if gradcam_img:
+                        st.image(gradcam_img, use_container_width=True)
                     else:
-                        st.success(f"✅ **Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
-                        st.info("ℹ️ **Low Risk:** No signs of Diabetic Retinopathy detected.")
+                        st.warning("No Grad-CAM heatmap generated.")
 
+                st.markdown("<br>", unsafe_allow_html=True)
+                if label == "DR":
+                    st.error(f"🚨 **Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
+                    st.warning("⚠️ **High Risk:** Signs of Diabetic Retinopathy detected in the heatmap region.")
                 else:
-                    st.error(f"❌ Server Error ({response.status_code}): {response.text}")
-
-            except Exception as e:
-                st.error("❌ Connection Error: FastAPI server is offline. Please start main.py first.")
+                    st.success(f"✅ **Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
+                    st.info("ℹ️ **Low Risk:** No signs of Diabetic Retinopathy detected.")
 
         st.divider()
 else:
     st.info("👈 Please upload retinal fundus images from the sidebar to initialize automated diagnosis.")
-
-
-    
