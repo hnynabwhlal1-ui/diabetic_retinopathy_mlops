@@ -6,7 +6,7 @@ import requests
 import streamlit as st
 from PIL import Image
 
-# إضافه المسار الحالي لضمان استدعاء مجلد src على السحابة
+# إضافة المسار الحالي لضمان استدعاء مجلد src على السحابة
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # استدعاء المحرك الداخلي للتوقع المباشر كخيار بديل تلقائي للسحابة
@@ -157,7 +157,7 @@ if uploaded_files:
                 """,
                 unsafe_allow_html=True
             )
-            st.image(uploaded_file, use_column_width=True)
+            st.image(uploaded_file)
             st.markdown("</div>", unsafe_allow_html=True)
 
         uploaded_file.seek(0)
@@ -202,7 +202,7 @@ if uploaded_files:
                 with col2:
                     st.subheader("🔥 Grad-CAM Heatmap Explanation")
                     if gradcam_img:
-                        st.image(gradcam_img, use_column_width=True)
+                        st.image(gradcam_img)
                     else:
                         st.warning("No Grad-CAM heatmap generated.")
 
