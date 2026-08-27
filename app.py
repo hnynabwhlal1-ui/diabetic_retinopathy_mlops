@@ -9,9 +9,9 @@ from PIL import Image
 # إضافة المسار الحالي لضمان استدعاء مجلد src على السحابة
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# استدعاء المحرك الداخلي للتوقع المباشر كخيار بديل تلقائي للسحابة
+# استدعاء المحرك الداخلي للتوقع باسم الدالة الصحيح run_prediction_pipeline
 try:
-    from src.predict import predict_and_explain
+    from src.predict import run_prediction_pipeline
     HAS_LOCAL_PREDICT = True
 except Exception as e:
     HAS_LOCAL_PREDICT = False
@@ -184,15 +184,14 @@ if uploaded_files:
             except Exception:
                 data_processed = False
 
-            # 2. المحاولة الثانية: التشغيل المباشر من predict.py عند الاستضافة السحابية
+            # 2. المحاولة الثانية: التشغيل المباشر عبر run_prediction_pipeline
             if not data_processed and HAS_LOCAL_PREDICT:
                 try:
                     uploaded_file.seek(0)
-                    input_img = Image.open(uploaded_file).convert("RGB")
-                    pred_res, heatmap_res = predict_and_explain(input_img, model_key=model_choice)
-                    label = pred_res.get("prediction")
-                    confidence = float(pred_res.get("confidence", 0))
-                    gradcam_img = heatmap_res
+                    pipeline_res = run_prediction_pipeline(uploaded_file, model_key=model_choice)
+                    label = pipeline_res.get("label")
+                    confidence = float(pipeline_res.get("confidence", 0)) * 100
+                    gradcam_img = pipeline_res.get("gradcam_image")
                     data_processed = True
                 except Exception as ex:
                     st.error(f"❌ Diagnostic Execution Error: {ex}")
