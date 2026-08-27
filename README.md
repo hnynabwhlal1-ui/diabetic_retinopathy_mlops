@@ -1,100 +1,101 @@
-# 👁️ Diabetic Retinopathy Detection: End-to-End MLOps & Explainable AI Pipeline
+# 👁️ Diabetic Retinopathy Diagnostic Engine: End-to-End MLOps & Explainable AI Pipeline
 
-[![Basic CI Pipeline](https://github.com/hnynabwhlal1-ui/diabetic_retinopathy_mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/hnynabwhlal1-ui/diabetic_retinopathy_mlops/actions)
-![Python 3.11](https://img.shields.io/badge/Python-3.11-blue.svg)
-![Keras Framework](https://img.shields.io/badge/Framework-Keras%20%2F%20TensorFlow-red.svg)
-![Streamlit App](https://img.shields.io/badge/Deployment-Streamlit-FF4B4B.svg)
+[![MLOps CI/CD Pipeline](https://github.com/hnynabwhlal1-ui/diabetic_retinopathy_mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/hnynabwhlal1-ui/diabetic_retinopathy_mlops/actions)
+![Python 3.10](https://img.shields.io/badge/Python-3.10-blue.svg)
+![Framework](https://img.shields.io/badge/Framework-Keras%20%2F%20TensorFlow-red.svg)
+![Backend](https://img.shields.io/badge/Backend-FastAPI-009688.svg)
+![Frontend](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)
+![Containerization](https://img.shields.io/badge/Container-Docker%20Compose-2496ED.svg)
 
-An end-to-end Computer Vision and MLOps engineering system designed to detect and grade Diabetic Retinopathy from retinal fundus imagery. The system bridges medical interpretability (Explainable AI) with production-grade software standards, featuring automated testing and Continuous Integration (CI).
+An end-to-end medical AI and MLOps system engineered to classify Diabetic Retinopathy from retinal fundus imagery and provide visual diagnostic interpretability using **Grad-CAM heatmaps**. 
+
+The application bridges deep learning research with production-grade microservice standards, featuring automated testing, Docker containerization, and continuous integration.
 
 ---
 
-## 🛠️ System Architecture & Directory Structure
+## 🔄 Evolution of the Project: From Experimentation to Production
 
-The project transitions standard deep learning scripts into a production-ready, modular codebase (`src/`) integrated with continuous quality control.
+### 📍 Phase 1: Kaggle Research & Model Suite Selection (v1.0)
+During initial experimentation on Kaggle, **6 architectural variants** were trained and tracked using **MLflow**:
+1. EfficientNet-B0 (Standard RGB vs. Ben Graham)
+2. **EfficientNet-B1 (Standard RGB vs. Ben Graham)** *(Selected Top Performers)*
+3. ResNet-50 (Standard RGB vs. Ben Graham)
+
+Based on training convergence and validation metrics, **EfficientNet-B1** was selected as the core backbone for comparative evaluation.
+
+---
+
+### 🔬 Empirical Validation (External Test Set - 8 Images)
+To test model generalization on real-world unstandardized clinical data (e.g., external Indian fundus datasets and web samples), both top EfficientNet-B1 models were tested on an unseen 8-image benchmark (`Test_Streamlit/`):
+
+| Model Architecture | Image Preprocessing Method | Empirical Score | Key Clinical Observation |
+| :--- | :--- | :---: | :--- |
+| **EfficientNet-B1** | Standard RGB | **6 / 8 (75%)** | Struggled with lighting imbalances, background noise, and circular border artifacts on non-standard images. |
+| **EfficientNet-B1** | **Ben Graham (Vein/Color Refinement)** | **7 / 8 (87.5%)** | **Outperformed RGB.** Local color subtraction and Gaussian smoothing effectively eliminated false positives on healthy eyes. |
+
+> **Conclusion:** Ben Graham preprocessing significantly improves cross-domain generalization and visual feature clarity for diagnostic confidence.
+
+---
+
+### 🚀 Phase 2: Enterprise MLOps Architecture (v2.0 - Current)
+The future engineering roadmap from v1.0 has been fully realized into a production-ready microservice ecosystem:
 
 ```text
 ├── .github/
 │   └── workflows/
-│       └── ci.yml               # Cloud Automation & CI Pipeline (GitHub Actions)
-├── model/
-│   └── trained_model.keras     # Deep Learning Model Artifact
-├── src/                        # Core Modular Codebase
-│   ├── config.py               # Constants, Paths, and Target Class Specifications
-│   ├── utils.py                # Preprocessing Protocols & Image Array Conversions
-│   ├── grad_cam.py             # Gradient Activation Heatmap Calculations
-│   └── predict.py              # End-to-End Prediction Pipeline Execution
-├── Test_Streamlit/             # Local Empirical Validation Dataset (8 Images)
+│       └── ci.yml                 # GitHub Actions (CI/CD Pipeline)
+├── model/                         # Production Model Artifacts
+├── src/                           # Core Utilities & Inference Logic
+│   ├── config.py
+│   ├── utils.py                   # Preprocessing & Ben Graham Filters
+│   ├── grad_cam.py                # Visual Saliency Calculation
+│   └── predict.py
 ├── tests/
-│   └── test_pipeline.py        # Automated Test Suites (Pytest)
-├── app.py                      # Interactive Web User Interface (Streamlit)
-└── requirements.txt            # Dependency Management & Environment Lock
+│   └── test_pipeline.py           # Automated Pytest Suite
+├── main.py                        # FastAPI Backend Engine
+├── app.py                         # Streamlit Interactive Multi-Model UI
+├── MLflow_test.py                 # MLflow Logging Scripts
+├── Dockerfile                     # API Container Configuration
+├── docker-compose.yml             # Multi-Container Orchestration
+└── requirements.txt
 
-🩺 Explainable AI (Grad-CAM) & Clinical Value
-In clinical decision-support systems, prediction confidence is bound to model explainability. A raw classification score is insufficient for medical validation.
 
-Diagnostic Verification: Integrated Gradient-weighted Class Activation Mapping (Grad-CAM) computes the visual saliency map directly from the final convolutional layers.
+🏗️ System Architecture & Microservices
+The application is fully decoupled into isolated services:
 
-Streamlit Integration: Upon image processing, the UI renders both the predicted classification stage and the overlaid heatmap. This highlights lesion patterns (such as microaneurysms, exudates, and hemorrhages), giving clinicians immediate visual evidence to verify AI outputs against diagnostic standards.
+Frontend Container (ui): Interactive Streamlit interface enabling clinicians to select models (RGB vs. Ben Graham), upload fundus images, inspect prediction confidence, and view Grad-CAM heatmaps.
 
-🔬 Empirical Validation (Test_Streamlit) & Ben Graham Motivation
-To evaluate domain generalization, the Streamlit interface was tested using a curated benchmark folder Test_Streamlit containing 8 test images split into two categories:
+Backend Container (api): Asynchronous FastAPI engine handling deep learning tensor transformations, inference execution, and Grad-CAM array calculations.
 
-📊 Validation Results & Insights:
-Diabetic Retinopathy (DR) — 4 Images:
+Docker Compose: Manages internal service networking, environment synchronization, and local deployment with zero environment drift.
 
-Result: 4/4 Correctly Classified (100% Accuracy).
+🧪 Automated Testing & CI/CD Pipeline
+To ensure reliability, every code push (git push origin main) triggers an automated workflow via GitHub Actions (.github/workflows/ci.yml):
 
-Observation: Both the 2 standard benchmark dataset images and the 2 random external web images were accurately identified due to prominent, high-contrast lesion features.
+Continuous Integration (CI):
 
-No Retinopathy (No DR) — 4 Images:
+Sets up a clean Linux runner (ubuntu-latest).
 
-Result: 2 Correct / 2 Incorrect (False Positives).
+Installs dependencies and runs automated unit tests via pytest (test_pipeline.py).
 
-Observation: The 2 images sourced from standard datasets were correctly predicted as No DR. However, the 2 random external web images resulted in False Positives (misclassified as DR).
+Verifies image preprocessing tensor dimensions, model loading, and non-image error handling robustness.
 
-💡 Justification for Future Integration (Ben Graham Method):
-Unstandardized web images suffer from low resolution, background noise, camera artifacts, and lighting imbalances that the model mistakes for lesions. Integrating Ben Graham Preprocessing (local color subtraction + Gaussian smoothing) in future iterations will:
+Continuous Deployment Verification (CD):
 
-Remove uninformative circular background margins.
+Executes docker compose build to verify multi-container integration and ensure zero build breaks.
 
-Equalize non-uniform illumination across different camera sources to eliminate False Positives on healthy eyes.
+⚙️ Execution & Deployment Guide
+Option 1: Docker Compose Deployment (Recommended)
+Run the entire production stack with a single command:
 
-🧪 Quality Assurance & Continuous Integration (CI)
-To eliminate pipeline fragility, avoid runtime breaking changes, and guarantee cross-environment stability, the project implements rigorous automated software testing.
+bash
+docker compose up --build
 
-1. Automated Unit & Robustness Testing (Pytest)
-test_preprocess_image_shape: Verifies that uploaded binary image streams are correctly parsed, resized, normalized, and transformed into appropriate model tensors without silently dropping bytes.
+Streamlit UI: http://localhost:8501
+FastAPI Docs: http://localhost:8000/docs
 
-test_model_prediction_pipeline: Ensures the trained .keras model artifact loads into memory seamlessly, processes the feature vector, and outputs expected inference probability arrays.
+Option 2: Run Unit Tests Locally
+Verify software stability locally before pushing:
 
-test_invalid_image_input: Evaluates system resilience (Robustness Testing) against corrupted inputs or non-image file uploads, enforcing safe exception handling rather than unhandled system crashes.
-
-2. Cloud Automation (GitHub Actions)
-Every code push to the main branch triggers a headless Linux environment (ubuntu-latest) via .github/workflows/ci.yml. The runner installs exact runtime dependencies and executes pytest automatically, preventing broken builds from reaching deployment.
-
-🔮 Future Engineering Roadmap
-Ben Graham Preprocessing: Implementing Gaussian blurring and local color subtraction algorithms as proven by Test_Streamlit empirical findings.
-
-Containerization (Docker): Packaging the code, model binaries, and runtime environment into Docker images to guarantee uniform execution across different hosting infrastructure.
-
-ML Experiment Tracking (MLflow): Tracking dataset lineage, model versioning, hyperparameters, and evaluation metrics during prospective model retraining cycles.
-
-⚙️ Execution Guide
-1. Installation
-Clone the repository and set up runtime dependencies:
-
-Bash
-git clone [https://github.com/hnynabwhlal1-ui/diabetic_retinopathy_mlops.git](https://github.com/hnynabwhlal1-ui/diabetic_retinopathy_mlops.git)
-cd diabetic_retinopathy_mlops
-pip install -r requirements.txt
-2. Run Automated Testing Framework
-Execute local test suites via Pytest:
-
-Bash
+bash
 pytest tests/
-3. Launch Local Streamlit Web Application
-Run the interactive user interface locally:
-
-Bash
-streamlit run app.py
