@@ -1,15 +1,21 @@
+import sys
+import os
 import io
 import base64
 import requests
 import streamlit as st
 from PIL import Image
 
+# إضافه المسار الحالي لضمان استدعاء مجلد src على السحابة
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 # استدعاء المحرك الداخلي للتوقع المباشر كخيار بديل تلقائي للسحابة
 try:
     from src.predict import predict_and_explain
     HAS_LOCAL_PREDICT = True
-except ImportError:
+except Exception as e:
     HAS_LOCAL_PREDICT = False
+    IMPORT_ERROR = str(e)
 
 # ==========================================
 # 1. Page Configuration
@@ -151,7 +157,7 @@ if uploaded_files:
                 """,
                 unsafe_allow_html=True
             )
-            st.image(uploaded_file, use_container_width=True)
+            st.image(uploaded_file, use_column_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
         uploaded_file.seek(0)
@@ -196,7 +202,7 @@ if uploaded_files:
                 with col2:
                     st.subheader("🔥 Grad-CAM Heatmap Explanation")
                     if gradcam_img:
-                        st.image(gradcam_img, use_container_width=True)
+                        st.image(gradcam_img, use_column_width=True)
                     else:
                         st.warning("No Grad-CAM heatmap generated.")
 
@@ -207,6 +213,12 @@ if uploaded_files:
                 else:
                     st.success(f"✅ **Diagnosis:** {label} | **Confidence:** {confidence:.2f}%")
                     st.info("ℹ️ **Low Risk:** No signs of Diabetic Retinopathy detected.")
+            else:
+                with col2:
+                    st.error("❌ Inference Pipeline Failed")
+                    if not HAS_LOCAL_PREDICT:
+                        st.warning(f"⚠️ Local Predict Module failed to load: `{IMPORT_ERROR}`")
+                    st.info("Ensure local models (.h5) are present in the repository or FastAPI container is reachable.")
 
         st.divider()
 else:
