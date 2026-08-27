@@ -9,9 +9,9 @@ from PIL import Image
 # إضافة المسار الحالي لضمان استدعاء مجلد src على السحابة
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# استدعاء المحرك الداخلي للتوقع المباشر كخيار بديل تلقائي للسحابة
+# استدعاء المحرك الداخلي بالاسم الصحيح للدالة
 try:
-    from src.predict import predict_and_explain
+    from src.predict import run_prediction_pipeline
     HAS_LOCAL_PREDICT = True
 except Exception as e:
     HAS_LOCAL_PREDICT = False
@@ -166,7 +166,7 @@ if uploaded_files:
             data_processed = False
             label, confidence, gradcam_img = None, 0.0, None
 
-            # 1. المحاولة الأولى: الاتصال بسيرفر FastAPI (إن كان يعمل)
+            # 1. المحاولة الأولى: الاتصال بسيرفر FastAPI
             try:
                 files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
                 params = {"model_key": model_choice}
@@ -175,7 +175,7 @@ if uploaded_files:
                 if response.status_code == 200:
                     data = response.json()
                     label = data.get("prediction")
-                    confidence = float(data.get("confidence", 0))
+                    confidence = float(data.get("confidence", 0)) * 100
                     gradcam_b64 = data.get("gradcam_base64")
                     if gradcam_b64:
                         img_bytes = base64.b64decode(gradcam_b64)
@@ -184,15 +184,18 @@ if uploaded_files:
             except Exception:
                 data_processed = False
 
-            # 2. المحاولة الثانية: التشغيل المباشر من predict.py عند الاستضافة السحابية
+            # 2. المحاولة الثانية: التشغيل المباشر من run_prediction_pipeline
             if not data_processed and HAS_LOCAL_PREDICT:
                 try:
                     uploaded_file.seek(0)
                     input_img = Image.open(uploaded_file).convert("RGB")
-                    pred_res, heatmap_res = predict_and_explain(input_img, model_key=model_choice)
-                    label = pred_res.get("prediction")
-                    confidence = float(pred_res.get("confidence", 0))
-                    gradcam_img = heatmap_res
+                    
+                    # استدعاء الدالة الصحيحة
+                    result_dict = run_prediction_pipeline(input_img, model_key=model_choice)
+                    
+                    label = result_dict.get("label")
+                    confidence = float(result_dict.get("confidence", 0)) * 100
+                    gradcam_img = result_dict.get("gradcam_image")
                     data_processed = True
                 except Exception as ex:
                     st.error(f"❌ Diagnostic Execution Error: {ex}")
