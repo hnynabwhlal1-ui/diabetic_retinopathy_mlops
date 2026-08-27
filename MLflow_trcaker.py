@@ -2,7 +2,7 @@ import mlflow
 from src.config import MODELS_CONFIG, IMG_SIZE, CLASS_NAMES
 
 # 1. ربط قاعدة البيانات المستهدفة
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_tracking_uri("sqlite:///./mlflow.db")
 mlflow.set_experiment("Diabetic_Retinopathy_MLOps")
 
 # 2. تسجيل نموذج EfficientNetB1 Standard RGB
