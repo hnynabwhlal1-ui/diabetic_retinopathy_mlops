@@ -10,3 +10,4 @@ pytest
 fastapi
 uvicorn
 python-multipart
+mlflow
